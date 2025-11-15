@@ -19,6 +19,12 @@ export const useThemeStore = create<ThemeState>()(
       name: 'theme-preference',
       storage: createJSONStorage(() => AsyncStorage),
       version: 1,
+      partialize: (state) => ({ preference: state.preference }),
+      onRehydrateStorage: () => (state, error) => {
+        if (error) {
+          console.error('Error rehydrating theme store:', error);
+        }
+      },
     }
   )
 );

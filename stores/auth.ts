@@ -172,8 +172,8 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       set({ loading: true });
 
       const [userJson, token] = await Promise.all([
-        AsyncStorage.getItem(STORAGE_KEYS.USER),
-        AsyncStorage.getItem(STORAGE_KEYS.TOKEN),
+        AsyncStorage.getItem(STORAGE_KEYS.USER).catch(() => null),
+        AsyncStorage.getItem(STORAGE_KEYS.TOKEN).catch(() => null),
       ]);
 
       if (userJson && token) {
@@ -183,10 +183,14 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
         } catch (parseError) {
           console.error("Error parsing user data:", parseError);
           // Clear corrupted data
-          await AsyncStorage.multiRemove([
-            STORAGE_KEYS.USER,
-            STORAGE_KEYS.TOKEN,
-          ]);
+          try {
+            await AsyncStorage.multiRemove([
+              STORAGE_KEYS.USER,
+              STORAGE_KEYS.TOKEN,
+            ]);
+          } catch (clearError) {
+            console.error("Error clearing corrupted data:", clearError);
+          }
           set({ user: null, token: null, isInitialized: true, loading: false });
         }
       } else {

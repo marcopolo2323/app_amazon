@@ -161,7 +161,7 @@ export default function CheckoutScreen() {
         serviceTitle: bookingDetails.serviceName,
         providerId: bookingDetails.provider.id,
         providerName: bookingDetails.provider.name,
-        paymentMethod: "mercado_pago" as PaymentMethod,
+        paymentMethod: selectedPaymentMethod,
         quantity: bookingDetails.quantity,
         amount: bookingDetails.totalPrice,
         currency: "PEN",
@@ -177,20 +177,40 @@ export default function CheckoutScreen() {
         },
       };
 
+      console.log('=== CREATING ORDER ===');
+      console.log('Payment method:', selectedPaymentMethod);
+      console.log('Payload:', JSON.stringify(payload, null, 2));
+
       const created = await Api.createOrder(token, payload);
+      console.log('Order created:', created);
 
-      const orderId = String(created._id || created.orderId);
+      const orderId = String(created._id || created.orderId || created.id);
 
-      // Navegar a flujo de Mercado Pago (único método)
-      router.push({
-        pathname: "/mercado-pago",
-        params: {
-          bookingId: orderId,
-          orderId: orderId,
-          amount: bookingDetails.totalPrice.toString(),
-          serviceId: bookingDetails.serviceId,
-        },
-      });
+      // Manejar según el método de pago seleccionado
+      if (selectedPaymentMethod === "mercado_pago") {
+        // Navegar a flujo de Mercado Pago
+        console.log('Navigating to Mercado Pago...');
+        router.push({
+          pathname: "/mercado-pago",
+          params: {
+            bookingId: orderId,
+            orderId: orderId,
+            amount: bookingDetails.totalPrice.toString(),
+            serviceId: bookingDetails.serviceId,
+          },
+        });
+      } else {
+        // Para Yape, Plin o transferencia bancaria, ir directo a confirmación
+        console.log('Navigating to order confirmation...');
+        router.push({
+          pathname: "/order-confirmation",
+          params: {
+            bookingId: orderId,
+            paymentMethod: selectedPaymentMethod,
+            success: "true",
+          },
+        });
+      }
     } catch (error: any) {
       console.error("Error creating booking:", error);
       const msg = error?.message || "No se pudo procesar la reserva. Intenta de nuevo.";
@@ -439,8 +459,8 @@ export default function CheckoutScreen() {
         style={styles.submitButton}
       >
         {selectedPaymentMethod === "mercado_pago"
-          ? "Proceder al Pago"
-          : "Confirmar Reserva"}
+          ? "Pagar con Mercado Pago"
+          : `Confirmar con ${paymentMethods.find(m => m.id === selectedPaymentMethod)?.name || 'este método'}`}
       </Button>
     </View>
   );

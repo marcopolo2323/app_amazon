@@ -2,21 +2,21 @@ import React, { useState } from 'react';
 import {
   View,
   Text,
-  StyleSheet,
+  TextInput,
   TouchableOpacity,
+  StyleSheet,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../components/Screen';
-import Input from '../components/Input';
 import Button from '../components/Button';
-import { ExternalLink } from '../components/external-link';
+import Input from '../components/Input';
 import Card from '../components/Card';
 import { useAuthStore } from '../stores/auth';
-import { Api } from '../lib/api';
 
 interface FormData {
   name: string;
@@ -26,22 +26,13 @@ interface FormData {
   phone: string;
   role: 'client' | 'affiliate';
   dni?: string;
-  whatsapp?: string;
-}
-
-interface Errors {
-  name?: string;
-  email?: string;
-  password?: string;
-  confirmPassword?: string;
-  phone?: string;
-  dni?: string;
-  whatsapp?: string;
+  yapePhone?: string;
 }
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { register, loading, login } = useAuthStore();
+  const register = useAuthStore((state) => state.register);
+  const loading = useAuthStore((state) => state.loading);
 
   const [formData, setFormData] = useState<FormData>({
     name: '',
@@ -50,262 +41,189 @@ export default function RegisterScreen() {
     confirmPassword: '',
     phone: '',
     role: 'client',
-    dni: '',
-    whatsapp: '',
   });
 
-  const [errors, setErrors] = useState<Errors>({});
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const termsUrl = process.env.EXPO_PUBLIC_TERMS_URL as string | undefined;
-  const privacyUrl = process.env.EXPO_PUBLIC_PRIVACY_URL as string | undefined;
-
-  const updateField = (field: keyof FormData, value: string) => {
-    setFormData(prev => {
-      const next = { ...prev, [field]: value } as FormData;
-
-      // Si cambia el teléfono y el rol es afiliado, copiar al WhatsApp
-      if (field === 'phone' && prev.role === 'affiliate') {
-        const wasSame = (prev.whatsapp || '').trim() === (prev.phone || '').trim();
-        if (!prev.whatsapp || wasSame) {
-          next.whatsapp = value;
-        }
-      }
-
-      // Si cambia el rol a afiliado y no hay WhatsApp, copiar el teléfono
-      if (field === 'role' && value === 'affiliate') {
-        if (!prev.whatsapp && prev.phone) {
-          next.whatsapp = prev.phone;
-        }
-      }
-
-      return next;
-    });
-    // Clear error cuando el usuario escribe
-    if (errors[field as keyof Errors]) {
-      setErrors(prev => ({ ...prev, [field]: undefined }));
-    }
-  };
-
-  const validateForm = () => {
-    const newErrors: Errors = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'El nombre es requerido';
-    } else if (formData.name.trim().length < 2) {
-      newErrors.name = 'El nombre debe tener al menos 2 caracteres';
-    }
-
-    if (!formData.email.trim()) {
-      newErrors.email = 'El correo electrónico es requerido';
-    } else if (!/^([^\s@]+)@([^\s@]+)\.([^\s@]+)$/.test(formData.email)) {
-      newErrors.email = 'Formato de correo inválido';
-    }
-
-    if (!formData.password.trim()) {
-      newErrors.password = 'La contraseña es requerida';
-    } else if (formData.password.length < 6) {
-      newErrors.password = 'La contraseña debe tener al menos 6 caracteres';
-    }
-
-    if (!formData.confirmPassword.trim()) {
-      newErrors.confirmPassword = 'Confirma tu contraseña';
-    } else if (formData.password !== formData.confirmPassword) {
-      newErrors.confirmPassword = 'Las contraseñas no coinciden';
-    }
-
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'El teléfono es requerido';
-    } else if (/^\+?\d/.test(formData.phone) === false || !/^[\d\s\-\+\(\)]{8,}$/.test(formData.phone)) {
-      newErrors.phone = 'Formato de teléfono inválido';
-    }
-
-    if (formData.role === 'affiliate') {
-      const dni = (formData.dni || '').trim();
-      if (!dni) newErrors.dni = 'El DNI es requerido';
-      else if (dni.length < 6) newErrors.dni = 'El DNI debe tener al menos 6 caracteres';
-
-      const whatsapp = (formData.whatsapp || '').trim();
-      if (!whatsapp) newErrors.whatsapp = 'El WhatsApp es requerido';
-      else if (!/^[\d\s\-\+\(\)]{8,}$/.test(whatsapp)) newErrors.whatsapp = 'Formato de WhatsApp inválido';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+  const updateFormData = (key: keyof FormData, value: string) => {
+    setFormData((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleRegister = async () => {
-    if (!validateForm()) return;
+    // Validaciones
+    if (!formData.name || !formData.email || !formData.password || !formData.phone) {
+      Alert.alert('Error', 'Por favor completa todos los campos obligatorios');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      Alert.alert('Error', 'Las contraseñas no coinciden');
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+
+    if (formData.role === 'affiliate' && (!formData.dni || !formData.yapePhone)) {
+      Alert.alert('Error', 'Los afiliados deben proporcionar DNI y teléfono Yape');
+      return;
+    }
 
     try {
-      const payload = {
-        name: formData.name.trim(),
-        email: formData.email.trim(),
+      const payload: any = {
+        name: formData.name,
+        email: formData.email,
         password: formData.password,
-        phone: formData.phone.trim(),
+        phone: formData.phone,
         role: formData.role,
       };
 
-      await register(payload);
+      const result = await register(payload);
 
-      if (formData.role === 'affiliate') {
-        // Auto login para crear perfil de afiliado
-        const loginData = await login(formData.email.trim(), formData.password);
-        const token = loginData.token;
-        const user = loginData.user;
-
-        // Crear perfil de afiliado con DNI y WhatsApp (yapePhone en backend)
-        await Api.createAffiliate(token, {
-          affiliateId: user.id || user._id,
-          dni: (formData.dni || '').trim(),
-          yapePhone: (formData.whatsapp || '').trim(),
-          status: 'pending',
-          termsAccepted: true,
+      if (formData.role === 'affiliate' && result?.token) {
+        // Crear perfil de afiliado
+        const { Api } = await import('../lib/api');
+        await Api.createAffiliate(result.token, {
+          affiliateId: result.user.id || result.user._id,
+          dni: formData.dni || '',
+          yapePhone: formData.yapePhone || '',
         });
-
-        // Ir al dashboard del afiliado
--        router.replace('/affiliate/dashboard');
-+        router.replace('/affiliate');
-        return;
       }
 
-      // Clientes: ir a login
-      router.replace('/login');
-    } catch (error) {
-      // Error se maneja en el store y por Toast
-      console.error('Register error:', error);
+      Alert.alert(
+        'Éxito',
+        'Cuenta creada exitosamente. Por favor inicia sesión.',
+        [
+          {
+            text: 'OK',
+            onPress: () => router.replace('/login'),
+          },
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'Error al crear la cuenta');
     }
   };
 
-  const handleLogin = () => {
-    router.push('/login');
-  };
-
   return (
-    <Screen
-      title="Crear cuenta"
-      subtitle="Únete a nuestra comunidad"
-      maxWidth={400}
-    >
+    <Screen safeArea scrollable>
       <KeyboardAvoidingView
-        style={styles.container}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.container}
       >
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.form}>
-            {/* Role Selection */}
-            <View style={styles.roleSection}>
-              <Text style={styles.roleSectionTitle}>¿Qué tipo de cuenta deseas?</Text>
-              <View style={styles.roleOptions}>
-                <TouchableOpacity
-                  style={[
-                    styles.roleCard,
-                    formData.role === 'client' && styles.roleCardActive,
-                  ]}
-                  onPress={() => updateField('role', 'client')}
-                >
-                  <View style={styles.roleCardContent}>
-                    <Ionicons
-                      name="person-outline"
-                      size={32}
-                      color={formData.role === 'client' ? '#2563EB' : '#6B7280'}
-                    />
-                    <Text style={[
-                      styles.roleCardTitle,
-                      formData.role === 'client' && styles.roleCardTitleActive,
-                    ]}>
-                      Cliente
-                    </Text>
-                    <Text style={styles.roleCardDescription}>
-                      Busca y contrata servicios
-                    </Text>
-                  </View>
-                </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.header}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.back()}
+            >
+              <Ionicons name="arrow-back" size={24} color="#000" />
+            </TouchableOpacity>
+            <Text style={styles.title}>Crear Cuenta</Text>
+            <Text style={styles.subtitle}>
+              Únete a Amazon Group hoy
+            </Text>
+          </View>
 
-                <TouchableOpacity
+          <Card style={styles.card}>
+            {/* Selector de rol */}
+            <View style={styles.roleSelector}>
+              <TouchableOpacity
+                style={[
+                  styles.roleButton,
+                  formData.role === 'client' && styles.roleButtonActive,
+                ]}
+                onPress={() => updateFormData('role', 'client')}
+              >
+                <Ionicons
+                  name="person-outline"
+                  size={24}
+                  color={formData.role === 'client' ? '#2563EB' : '#666'}
+                />
+                <Text
                   style={[
-                    styles.roleCard,
-                    formData.role === 'affiliate' && styles.roleCardActive,
+                    styles.roleButtonText,
+                    formData.role === 'client' && styles.roleButtonTextActive,
                   ]}
-                  onPress={() => updateField('role', 'affiliate')}
                 >
-                  <View style={styles.roleCardContent}>
-                    <Ionicons
-                      name="briefcase-outline"
-                      size={32}
-                      color={formData.role === 'affiliate' ? '#2563EB' : '#6B7280'}
-                    />
-                    <Text style={[
-                      styles.roleCardTitle,
-                      formData.role === 'affiliate' && styles.roleCardTitleActive,
-                    ]}>
-                      Afiliado
-                    </Text>
-                    <Text style={styles.roleCardDescription}>
-                      Ofrece tus servicios
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              </View>
+                  Cliente
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.roleButton,
+                  formData.role === 'affiliate' && styles.roleButtonActive,
+                ]}
+                onPress={() => updateFormData('role', 'affiliate')}
+              >
+                <Ionicons
+                  name="briefcase-outline"
+                  size={24}
+                  color={formData.role === 'affiliate' ? '#2563EB' : '#666'}
+                />
+                <Text
+                  style={[
+                    styles.roleButtonText,
+                    formData.role === 'affiliate' && styles.roleButtonTextActive,
+                  ]}
+                >
+                  Afiliado
+                </Text>
+              </TouchableOpacity>
             </View>
 
-            {/* Información personal */}
             <Input
               label="Nombre completo"
-              placeholder="Tu nombre"
+              placeholder="Juan Pérez"
               value={formData.name}
-              onChangeText={(text) => updateField('name', text)}
-              error={errors.name}
-              leftIcon="person-outline"
-              autoCapitalize="words"
-              required
+              onChangeText={(value) => updateFormData('name', value)}
+              leftIcon={<Ionicons name="person-outline" size={20} color="#666" />}
             />
 
             <Input
-              label="Correo electrónico"
+              label="Email"
               placeholder="tu@email.com"
               value={formData.email}
-              onChangeText={(text) => updateField('email', text)}
-              error={errors.email}
-              leftIcon="mail-outline"
+              onChangeText={(value) => updateFormData('email', value)}
               keyboardType="email-address"
               autoCapitalize="none"
-              autoCorrect={false}
-              required
+              leftIcon={<Ionicons name="mail-outline" size={20} color="#666" />}
             />
 
             <Input
               label="Teléfono"
-              placeholder="+51 987 654 321"
+              placeholder="+51 999 999 999"
               value={formData.phone}
-              onChangeText={(text) => updateField('phone', text)}
-              error={errors.phone}
-              leftIcon="call-outline"
+              onChangeText={(value) => updateFormData('phone', value)}
               keyboardType="phone-pad"
-              required
+              leftIcon={<Ionicons name="call-outline" size={20} color="#666" />}
             />
 
             {formData.role === 'affiliate' && (
               <>
                 <Input
                   label="DNI"
-                  placeholder="Tu DNI"
-                  value={formData.dni || ''}
-                  onChangeText={(text) => updateField('dni', text)}
-                  error={errors.dni}
-                  leftIcon="id-card-outline"
-                  keyboardType="number-pad"
-                  required
+                  placeholder="12345678"
+                  value={formData.dni}
+                  onChangeText={(value) => updateFormData('dni', value)}
+                  keyboardType="numeric"
+                  leftIcon={<Ionicons name="card-outline" size={20} color="#666" />}
                 />
 
                 <Input
-                  label="WhatsApp"
-                  placeholder="+51 999 888 777"
-                  value={formData.whatsapp || ''}
-                  onChangeText={(text) => updateField('whatsapp', text)}
-                  error={errors.whatsapp}
-                  leftIcon="logo-whatsapp"
+                  label="Teléfono Yape"
+                  placeholder="+51 999 999 999"
+                  value={formData.yapePhone}
+                  onChangeText={(value) => updateFormData('yapePhone', value)}
                   keyboardType="phone-pad"
-                  required
+                  leftIcon={<Ionicons name="wallet-outline" size={20} color="#666" />}
                 />
               </>
             )}
@@ -314,24 +232,36 @@ export default function RegisterScreen() {
               label="Contraseña"
               placeholder="••••••••"
               value={formData.password}
-              onChangeText={(text) => updateField('password', text)}
-              error={errors.password}
-              leftIcon="lock-closed-outline"
-              secureTextEntry
-              showPasswordToggle
-              required
+              onChangeText={(value) => updateFormData('password', value)}
+              secureTextEntry={!showPassword}
+              leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
+              rightIcon={
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <Ionicons
+                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#666"
+                  />
+                </TouchableOpacity>
+              }
             />
 
             <Input
               label="Confirmar contraseña"
               placeholder="••••••••"
               value={formData.confirmPassword}
-              onChangeText={(text) => updateField('confirmPassword', text)}
-              error={errors.confirmPassword}
-              leftIcon="lock-closed-outline"
-              secureTextEntry
-              showPasswordToggle
-              required
+              onChangeText={(value) => updateFormData('confirmPassword', value)}
+              secureTextEntry={!showConfirmPassword}
+              leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
+              rightIcon={
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  <Ionicons
+                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
+                    size={20}
+                    color="#666"
+                  />
+                </TouchableOpacity>
+              }
             />
 
             <Button
@@ -339,38 +269,15 @@ export default function RegisterScreen() {
               loading={loading}
               style={styles.registerButton}
             >
-              Crear cuenta
+              Crear Cuenta
             </Button>
+          </Card>
 
-            {(termsUrl || privacyUrl) && (
-              <View style={{ alignItems: 'center', marginBottom: 24 }}>
-                <Text style={{ color: '#9CA3AF' }}>Al crear una cuenta aceptas nuestros </Text>
-                <View style={{ flexDirection: 'row', flexWrap: 'wrap' }}>
-                  {termsUrl && (
-                    <ExternalLink href={termsUrl} style={{ color: '#2563EB', fontWeight: '600' }}>
-                      Términos y condiciones
-                    </ExternalLink>
-                  )}
-                  {termsUrl && privacyUrl && <Text style={{ color: '#9CA3AF' }}> y </Text>}
-                  {privacyUrl && (
-                    <ExternalLink href={privacyUrl} style={{ color: '#2563EB', fontWeight: '600' }}>
-                      Política de privacidad
-                    </ExternalLink>
-                  )}
-                </View>
-              </View>
-            )}
-
-            <View style={styles.loginSection}>
-              <Text style={styles.loginText}>
-                ¿Ya tienes cuenta?{' '}
-              </Text>
-              <TouchableOpacity onPress={handleLogin}>
-                <Text style={styles.loginLink}>
-                  Iniciar sesión
-                </Text>
-              </TouchableOpacity>
-            </View>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>¿Ya tienes una cuenta? </Text>
+            <TouchableOpacity onPress={() => router.push('/login')}>
+              <Text style={styles.footerLink}>Inicia sesión</Text>
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -382,68 +289,72 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
-  form: {
-    flex: 1,
+  scrollContent: {
+    flexGrow: 1,
+    padding: 20,
   },
-  roleSection: {
-    marginBottom: 32,
+  header: {
+    marginBottom: 30,
   },
-  roleSectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 16,
-    textAlign: 'center',
+  backButton: {
+    marginBottom: 20,
   },
-  roleOptions: {
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#000',
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#666',
+  },
+  card: {
+    padding: 20,
+  },
+  roleSelector: {
     flexDirection: 'row',
     gap: 12,
+    marginBottom: 20,
   },
-  roleCard: {
+  roleButton: {
     flex: 1,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: 12,
-    padding: 16,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    padding: 16,
+    borderRadius: 8,
+    borderWidth: 2,
+    borderColor: '#E5E5E5',
+    backgroundColor: '#fff',
   },
-  roleCardActive: {
+  roleButtonActive: {
     borderColor: '#2563EB',
     backgroundColor: '#EFF6FF',
   },
-  roleCardContent: {
-    alignItems: 'center',
-  },
-  roleCardTitle: {
+  roleButtonText: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#6B7280',
-    marginTop: 8,
-    marginBottom: 4,
+    color: '#666',
   },
-  roleCardTitleActive: {
+  roleButtonTextActive: {
     color: '#2563EB',
   },
-  roleCardDescription: {
-    fontSize: 12,
-    color: '#9CA3AF',
-    textAlign: 'center',
-  },
   registerButton: {
-    marginTop: 8,
-    marginBottom: 32,
+    marginTop: 10,
   },
-  loginSection: {
+  footer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
+    marginTop: 30,
   },
-  loginText: {
-    fontSize: 16,
-    color: '#6B7280',
+  footerText: {
+    fontSize: 14,
+    color: '#666',
   },
-  loginLink: {
-    fontSize: 16,
+  footerLink: {
+    fontSize: 14,
     color: '#2563EB',
     fontWeight: '600',
   },

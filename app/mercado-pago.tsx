@@ -36,35 +36,107 @@ export default function MercadoPagoScreen() {
   const paymentAmount = parseFloat(amount || "0");
 
   useEffect(() => {
+    console.log('=== MERCADO PAGO SCREEN MOUNTED ===');
+    console.log('Params:', { bookingId, orderId: orderIdParam, amount, serviceId });
+    console.log('Token:', token ? 'Present' : 'Missing');
     generatePaymentUrl();
   }, []);
 
   const generatePaymentUrl = async () => {
+    console.log('=== GENERATE PAYMENT URL ===');
     setLoading(true);
     try {
       const orderId = String(orderIdParam || bookingId || "");
+      console.log('Order ID:', orderId);
+      console.log('Service ID:', serviceId);
+      
       let pref: any;
       if (orderId) {
-        // Preferido: usar la orden ya creada en checkout
+        console.log('Creating preference with orderId...');
         pref = await Api.createMercadoPagoPreference(token || "", {
           orderId,
         });
       } else {
-        if (!serviceId) throw new Error("Falta serviceId para crear preferencia");
-        // Fallback: aún así intentamos con serviceId (backend requerirá datos si crea orden)
+        if (!serviceId) {
+          console.error('Missing serviceId!');
+          throw new Error("Falta serviceId para crear preferencia");
+        }
+        console.log('Creating preference with serviceId...');
         pref = await Api.createMercadoPagoPreference(token || "", {
           serviceId: String(serviceId),
         });
       }
-      const initPoint = pref?.init_point || pref?.sandbox_init_point || pref?.url;
-      if (!initPoint) throw new Error("Preferencia creada sin URL inicial");
+      
+      console.log('Preference response:', JSON.stringify(pref, null, 2));
+      console.log('Preference keys:', Object.keys(pref || {}));
+      
+      // Intentar múltiples formas de obtener el init_point
+      let initPoint = null;
+      
+      // Opción 1: Directamente en la respuesta
+      if (pref?.init_point) {
+        initPoint = pref.init_point;
+        console.log('Found init_point directly:', initPoint);
+      }
+      // Opción 2: Sandbox init point
+      else if (pref?.sandbox_init_point) {
+        initPoint = pref.sandbox_init_point;
+        console.log('Found sandbox_init_point:', initPoint);
+      }
+      // Opción 3: En un objeto preference anidado
+      else if (pref?.preference?.init_point) {
+        initPoint = pref.preference.init_point;
+        console.log('Found preference.init_point:', initPoint);
+      }
+      // Opción 4: En un objeto preference con sandbox
+      else if (pref?.preference?.sandbox_init_point) {
+        initPoint = pref.preference.sandbox_init_point;
+        console.log('Found preference.sandbox_init_point:', initPoint);
+      }
+      // Opción 5: Campo url genérico
+      else if (pref?.url) {
+        initPoint = pref.url;
+        console.log('Found url:', initPoint);
+      }
+      // Opción 6: En data.init_point (algunas APIs lo devuelven así)
+      else if (pref?.data?.init_point) {
+        initPoint = pref.data.init_point;
+        console.log('Found data.init_point:', initPoint);
+      }
+      
+      console.log('Final init point:', initPoint);
+      
+      if (!initPoint) {
+        console.error('No init point found in preference!');
+        console.error('Full preference object:', JSON.stringify(pref, null, 2));
+        throw new Error("Preferencia creada sin URL inicial. Verifica la configuración de Mercado Pago en el backend.");
+      }
+      
       setPaymentUrl(initPoint);
-    } catch (error) {
-      console.error("Error creando preferencia MP:", error);
+      console.log('Payment URL set successfully');
+    } catch (error: any) {
+      console.error("=== MERCADO PAGO ERROR ===");
+      console.error("Error object:", error);
+      console.error("Error message:", error?.message);
+      console.error("Error response:", error?.response);
+      console.error("Error status:", error?.status);
+      
       Alert.alert(
-        "Error",
-        "No se pudo iniciar el pago con Mercado Pago. Verifica tu configuración.",
-        [{ text: "OK" }],
+        "Mercado Pago no disponible",
+        "El pago con Mercado Pago no está configurado en el servidor. Por favor, usa otro método de pago (Yape, Plin o transferencia bancaria).",
+        [
+          { 
+            text: "Volver", 
+            onPress: () => router.back() 
+          },
+          {
+            text: "Elegir otro método",
+            onPress: () => {
+              // Volver a la pantalla de pago
+              router.back();
+            }
+          }
+        ],
       );
     } finally {
       setLoading(false);
@@ -72,14 +144,27 @@ export default function MercadoPagoScreen() {
   };
 
   const handlePayWithMercadoPago = async () => {
-    if (!paymentUrl) return;
+    console.log('=== PAY WITH MERCADO PAGO ===');
+    console.log('Payment URL:', paymentUrl);
+    
+    if (!paymentUrl) {
+      console.error('No payment URL available!');
+      Alert.alert('Error', 'No hay URL de pago disponible');
+      return;
+    }
 
     setProcessing(true);
 
     try {
+      console.log('Checking if can open URL...');
       const canOpen = await Linking.canOpenURL(paymentUrl);
+      console.log('Can open URL:', canOpen);
+      
       if (canOpen) {
+        console.log('Opening URL...');
         await Linking.openURL(paymentUrl);
+        console.log('URL opened successfully');
+        
         Alert.alert(
           "Redirigiendo a MercadoPago",
           "Se abrirá MercadoPago para completar tu pago. Regresa a la app después de completar el pago.",
@@ -91,15 +176,22 @@ export default function MercadoPagoScreen() {
             {
               text: "Cancelar pago",
               style: "cancel",
-              onPress: () => setProcessing(false),
+              onPress: () => {
+                console.log('Payment cancelled by user');
+                setProcessing(false);
+              },
             },
           ],
         );
       } else {
+        console.error('Cannot open URL!');
         throw new Error("No se puede abrir MercadoPago");
       }
-    } catch (error) {
-      console.error("Error opening MercadoPago:", error);
+    } catch (error: any) {
+      console.error("=== ERROR OPENING MERCADO PAGO ===");
+      console.error("Error:", error);
+      console.error("Error message:", error?.message);
+      
       Alert.alert(
         "Error",
         "No se pudo abrir MercadoPago. Verifica que tengas la app instalada.",

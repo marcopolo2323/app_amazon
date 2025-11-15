@@ -1,0 +1,58 @@
+export default {
+  expo: {
+    name: "amazon_group_app",
+    slug: "amazon_group_app",
+    scheme: "amazongroupapp",
+    version: "1.0.0",
+    orientation: "portrait",
+    icon: "./assets/images/icon.png",
+    userInterfaceStyle: "light",
+    splash: {
+      image: "./assets/images/splash-icon.png",
+      resizeMode: "contain",
+      backgroundColor: "#ffffff"
+    },
+    assetBundlePatterns: ["**/*"],
+    ios: {
+      supportsTablet: true
+    },
+    android: {
+      adaptiveIcon: {
+        foregroundImage: "./assets/images/android-icon-foreground.png",
+        backgroundColor: "#ffffff",
+        backgroundImage: "./assets/images/android-icon-background.png"
+      },
+      package: "com.lloyd_forger.amazon_group_app",
+      permissions: [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE"
+      ]
+    },
+    web: {
+      favicon: "./assets/images/favicon.png"
+    },
+    plugins: [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-location",
+        {
+          locationAlwaysAndWhenInUsePermission: "Permitir que $(PRODUCT_NAME) use tu ubicación para mostrar servicios cercanos."
+        }
+      ]
+    ],
+    owner: "lloyd_forger1",
+    extra: {
+      router: {
+        origin: false
+      },
+      eas: {
+        projectId: "5b65745f-ac07-4d99-8626-01682847f092"
+      },
+      EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL || "https://amazon-group-app.onrender.com/api"
+    }
+  }
+};

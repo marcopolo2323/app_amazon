@@ -184,7 +184,7 @@ export default function RegisterScreen() {
               placeholder="Juan Pérez"
               value={formData.name}
               onChangeText={(value) => updateFormData('name', value)}
-              leftIcon={<Ionicons name="person-outline" size={20} color="#666" />}
+              leftIcon="person-outline"
             />
 
             <Input
@@ -194,7 +194,7 @@ export default function RegisterScreen() {
               onChangeText={(value) => updateFormData('email', value)}
               keyboardType="email-address"
               autoCapitalize="none"
-              leftIcon={<Ionicons name="mail-outline" size={20} color="#666" />}
+              leftIcon="mail-outline"
             />
 
             <Input
@@ -203,7 +203,7 @@ export default function RegisterScreen() {
               value={formData.phone}
               onChangeText={(value) => updateFormData('phone', value)}
               keyboardType="phone-pad"
-              leftIcon={<Ionicons name="call-outline" size={20} color="#666" />}
+              leftIcon="call-outline"
             />
 
             {formData.role === 'affiliate' && (
@@ -214,7 +214,7 @@ export default function RegisterScreen() {
                   value={formData.dni}
                   onChangeText={(value) => updateFormData('dni', value)}
                   keyboardType="numeric"
-                  leftIcon={<Ionicons name="card-outline" size={20} color="#666" />}
+                  leftIcon="card-outline"
                 />
 
                 <Input
@@ -223,7 +223,7 @@ export default function RegisterScreen() {
                   value={formData.yapePhone}
                   onChangeText={(value) => updateFormData('yapePhone', value)}
                   keyboardType="phone-pad"
-                  leftIcon={<Ionicons name="wallet-outline" size={20} color="#666" />}
+                  leftIcon="wallet-outline"
                 />
               </>
             )}
@@ -233,17 +233,9 @@ export default function RegisterScreen() {
               placeholder="••••••••"
               value={formData.password}
               onChangeText={(value) => updateFormData('password', value)}
-              secureTextEntry={!showPassword}
-              leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
-              rightIcon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons
-                    name={showPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              }
+              secureTextEntry
+              showPasswordToggle
+              leftIcon="lock-closed-outline"
             />
 
             <Input
@@ -251,17 +243,9 @@ export default function RegisterScreen() {
               placeholder="••••••••"
               value={formData.confirmPassword}
               onChangeText={(value) => updateFormData('confirmPassword', value)}
-              secureTextEntry={!showConfirmPassword}
-              leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
-              rightIcon={
-                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-                  <Ionicons
-                    name={showConfirmPassword ? 'eye-off-outline' : 'eye-outline'}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              }
+              secureTextEntry
+              showPasswordToggle
+              leftIcon="lock-closed-outline"
             />
 
             <Button

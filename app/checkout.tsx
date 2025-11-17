@@ -20,6 +20,8 @@ import { useAuthStore } from "../stores/auth";
 import { useOrdersStore } from "../stores/orders";
 import { Api } from "../lib/api";
 import ModalPicker from "../components/ModalPicker";
+import DateWheelPicker from "@/components/DateWheelPicker";
+import TimeWheelPicker from "@/components/TimeWheelPicker";
 
 
 interface BookingDetails {
@@ -233,27 +235,28 @@ export default function CheckoutScreen() {
       icon: "wallet-outline",
       color: "#009EE3",
     },
-    {
-      id: "yape" as PaymentMethod,
-      name: "Yape",
-      description: "Pago por Yape",
-      icon: "cash-outline",
-      color: "#10B981",
-    },
-    {
-      id: "plin" as PaymentMethod,
-      name: "Plin",
-      description: "Pago por Plin",
-      icon: "cash-outline",
-      color: "#10B981",
-    },
-    {
-      id: "bank" as PaymentMethod,
-      name: "Transferencia bancaria",
-      description: "Transferencia a cuenta bancaria",
-      icon: "swap-horizontal-outline",
-      color: "#8B5CF6",
-    },
+    // Métodos de pago deshabilitados temporalmente
+    // {
+    //   id: "yape" as PaymentMethod,
+    //   name: "Yape",
+    //   description: "Pago por Yape",
+    //   icon: "cash-outline",
+    //   color: "#10B981",
+    // },
+    // {
+    //   id: "plin" as PaymentMethod,
+    //   name: "Plin",
+    //   description: "Pago por Plin",
+    //   icon: "cash-outline",
+    //   color: "#10B981",
+    // },
+    // {
+    //   id: "bank" as PaymentMethod,
+    //   name: "Transferencia bancaria",
+    //   description: "Transferencia a cuenta bancaria",
+    //   icon: "swap-horizontal-outline",
+    //   color: "#8B5CF6",
+    // },
   ];
 
   const renderHeader = () => (

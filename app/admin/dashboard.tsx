@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   Dimensions,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -15,6 +16,7 @@ import Card from '../../components/Card';
 import { useAuthStore } from '../../stores/auth';
 
 const { width } = Dimensions.get('window');
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 interface AdminStats {
   totalUsers: number;
@@ -24,7 +26,7 @@ interface AdminStats {
   pendingAffiliates: number;
   totalRevenue: number;
   monthlyRevenue: number;
-  activeUsers: number;
+  monthlyOrders?: number;
 }
 
 interface QuickAction {
@@ -38,18 +40,9 @@ interface QuickAction {
 
 export default function AdminDashboardScreen() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, token } = useAuthStore();
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState<AdminStats>({
-    totalUsers: 1247,
-    totalAffiliates: 156,
-    totalServices: 892,
-    totalOrders: 3421,
-    pendingAffiliates: 12,
-    totalRevenue: 125430.50,
-    monthlyRevenue: 28750.25,
-    activeUsers: 324,
-  });
+  const [stats, setStats] = useState<AdminStats | null>(null);
 
   const quickActions: QuickAction[] = [
     {
@@ -58,7 +51,7 @@ export default function AdminDashboardScreen() {
       description: 'Ver y administrar usuarios',
       icon: 'people-outline',
       color: '#3B82F6',
-      route: '/(tabs)/home',
+      route: '/admin/users',
     },
     {
       id: 'manage-affiliates',
@@ -66,7 +59,7 @@ export default function AdminDashboardScreen() {
       description: 'Aprobar y supervisar afiliados',
       icon: 'briefcase-outline',
       color: '#10B981',
-      route: '/(tabs)/home',
+      route: '/admin/affiliates',
     },
     {
       id: 'manage-services',
@@ -74,15 +67,15 @@ export default function AdminDashboardScreen() {
       description: 'Revisar servicios publicados',
       icon: 'construct-outline',
       color: '#F59E0B',
-      route: '/(tabs)/home',
+      route: '/admin/services',
     },
     {
-      id: 'view-reports',
-      title: 'Reportes',
-      description: 'Analytics y estadísticas',
-      icon: 'analytics-outline',
+      id: 'view-orders',
+      title: 'Ver Órdenes',
+      description: 'Gestionar pedidos',
+      icon: 'receipt-outline',
       color: '#8B5CF6',
-      route: '/(tabs)/home',
+      route: '/admin/orders',
     },
   ];
 
@@ -93,11 +86,21 @@ export default function AdminDashboardScreen() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      // In real app, fetch actual data from API
+      const response = await fetch(`${API_URL}/api/admin/stats`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Error al cargar estadísticas');
+      }
+
+      const data = await response.json();
+      setStats(data);
     } catch (error) {
       console.error('Error loading admin dashboard data:', error);
+      Alert.alert('Error', 'No se pudieron cargar las estadísticas del dashboard');
     } finally {
       setLoading(false);
     }
@@ -126,78 +129,82 @@ export default function AdminDashboardScreen() {
     </Card>
   );
 
-  const renderStatsCards = () => (
-    <View style={styles.statsContainer}>
-      {/* First Row */}
-      <View style={styles.statsRow}>
-        <Card style={[styles.statCard, styles.statCardSmall]}>
-          <View style={styles.statContent}>
-            <View style={[styles.statIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Ionicons name="people-outline" size={24} color="#3B82F6" />
+  const renderStatsCards = () => {
+    if (!stats) return null;
+    
+    return (
+      <View style={styles.statsContainer}>
+        {/* First Row */}
+        <View style={styles.statsRow}>
+          <Card style={[styles.statCard, styles.statCardSmall]}>
+            <View style={styles.statContent}>
+              <View style={[styles.statIcon, { backgroundColor: '#EFF6FF' }]}>
+                <Ionicons name="people-outline" size={24} color="#3B82F6" />
+              </View>
+              <View style={styles.statInfo}>
+                <Text style={styles.statNumber}>{stats.totalUsers.toLocaleString()}</Text>
+                <Text style={styles.statLabel}>Usuarios Totales</Text>
+              </View>
             </View>
-            <View style={styles.statInfo}>
-              <Text style={styles.statNumber}>{stats.totalUsers.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Usuarios Totales</Text>
-            </View>
-          </View>
-        </Card>
+          </Card>
 
-        <Card style={[styles.statCard, styles.statCardSmall]}>
-          <View style={styles.statContent}>
-            <View style={[styles.statIcon, { backgroundColor: '#F0FDF4' }]}>
-              <Ionicons name="briefcase-outline" size={24} color="#10B981" />
+          <Card style={[styles.statCard, styles.statCardSmall]}>
+            <View style={styles.statContent}>
+              <View style={[styles.statIcon, { backgroundColor: '#F0FDF4' }]}>
+                <Ionicons name="briefcase-outline" size={24} color="#10B981" />
+              </View>
+              <View style={styles.statInfo}>
+                <Text style={styles.statNumber}>{stats.totalAffiliates}</Text>
+                <Text style={styles.statLabel}>Afiliados</Text>
+              </View>
             </View>
-            <View style={styles.statInfo}>
-              <Text style={styles.statNumber}>{stats.totalAffiliates}</Text>
-              <Text style={styles.statLabel}>Afiliados</Text>
+          </Card>
+        </View>
+
+        {/* Second Row */}
+        <View style={styles.statsRow}>
+          <Card style={[styles.statCard, styles.statCardSmall]}>
+            <View style={styles.statContent}>
+              <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
+                <Ionicons name="construct-outline" size={24} color="#F59E0B" />
+              </View>
+              <View style={styles.statInfo}>
+                <Text style={styles.statNumber}>{stats.totalServices}</Text>
+                <Text style={styles.statLabel}>Servicios</Text>
+              </View>
             </View>
-          </View>
-        </Card>
+          </Card>
+
+          <Card style={[styles.statCard, styles.statCardSmall]}>
+            <View style={styles.statContent}>
+              <View style={[styles.statIcon, { backgroundColor: '#EDE9FE' }]}>
+                <Ionicons name="receipt-outline" size={24} color="#8B5CF6" />
+              </View>
+              <View style={styles.statInfo}>
+                <Text style={styles.statNumber}>{stats.totalOrders.toLocaleString()}</Text>
+                <Text style={styles.statLabel}>Pedidos</Text>
+              </View>
+            </View>
+          </Card>
+        </View>
+
+        {/* Revenue Cards */}
+        <View style={styles.statsRow}>
+          <Card style={[styles.statCard, styles.statCardLarge]}>
+            <View style={styles.statContent}>
+              <View style={[styles.statIcon, { backgroundColor: '#ECFDF5' }]}>
+                <Ionicons name="trending-up-outline" size={24} color="#059669" />
+              </View>
+              <View style={styles.statInfo}>
+                <Text style={styles.statNumber}>${stats.monthlyRevenue.toLocaleString()}</Text>
+                <Text style={styles.statLabel}>Ingresos Este Mes (Comisión 5%)</Text>
+              </View>
+            </View>
+          </Card>
+        </View>
       </View>
-
-      {/* Second Row */}
-      <View style={styles.statsRow}>
-        <Card style={[styles.statCard, styles.statCardSmall]}>
-          <View style={styles.statContent}>
-            <View style={[styles.statIcon, { backgroundColor: '#FEF3C7' }]}>
-              <Ionicons name="construct-outline" size={24} color="#F59E0B" />
-            </View>
-            <View style={styles.statInfo}>
-              <Text style={styles.statNumber}>{stats.totalServices}</Text>
-              <Text style={styles.statLabel}>Servicios</Text>
-            </View>
-          </View>
-        </Card>
-
-        <Card style={[styles.statCard, styles.statCardSmall]}>
-          <View style={styles.statContent}>
-            <View style={[styles.statIcon, { backgroundColor: '#EDE9FE' }]}>
-              <Ionicons name="receipt-outline" size={24} color="#8B5CF6" />
-            </View>
-            <View style={styles.statInfo}>
-              <Text style={styles.statNumber}>{stats.totalOrders.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Pedidos</Text>
-            </View>
-          </View>
-        </Card>
-      </View>
-
-      {/* Revenue Cards */}
-      <View style={styles.statsRow}>
-        <Card style={[styles.statCard, styles.statCardLarge]}>
-          <View style={styles.statContent}>
-            <View style={[styles.statIcon, { backgroundColor: '#ECFDF5' }]}>
-              <Ionicons name="trending-up-outline" size={24} color="#059669" />
-            </View>
-            <View style={styles.statInfo}>
-              <Text style={styles.statNumber}>${stats.monthlyRevenue.toLocaleString()}</Text>
-              <Text style={styles.statLabel}>Ingresos Este Mes</Text>
-            </View>
-          </View>
-        </Card>
-      </View>
-    </View>
-  );
+    );
+  };
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsSection}>
@@ -223,44 +230,40 @@ export default function AdminDashboardScreen() {
     </View>
   );
 
-  const renderPendingActions = () => (
-    <Card style={styles.pendingCard}>
-      <View style={styles.pendingHeader}>
-        <Text style={styles.sectionTitle}>Acciones Pendientes</Text>
-        <View style={styles.pendingBadge}>
-          <Text style={styles.pendingCount}>{stats.pendingAffiliates}</Text>
+  const renderPendingActions = () => {
+    if (!stats) return null;
+    
+    return (
+      <Card style={styles.pendingCard}>
+        <View style={styles.pendingHeader}>
+          <Text style={styles.sectionTitle}>Acciones Pendientes</Text>
+          {stats.pendingAffiliates > 0 && (
+            <View style={styles.pendingBadge}>
+              <Text style={styles.pendingCount}>{stats.pendingAffiliates}</Text>
+            </View>
+          )}
         </View>
-      </View>
 
-      <View style={styles.pendingList}>
-        <TouchableOpacity style={styles.pendingItem}>
-          <View style={[styles.pendingIcon, { backgroundColor: '#FEF3C7' }]}>
-            <Ionicons name="person-add-outline" size={20} color="#F59E0B" />
-          </View>
-          <View style={styles.pendingContent}>
-            <Text style={styles.pendingTitle}>Afiliados por aprobar</Text>
-            <Text style={styles.pendingDescription}>
-              {stats.pendingAffiliates} solicitudes esperando revisión
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </TouchableOpacity>
-
-        <TouchableOpacity style={styles.pendingItem}>
-          <View style={[styles.pendingIcon, { backgroundColor: '#FEE2E2' }]}>
-            <Ionicons name="flag-outline" size={20} color="#EF4444" />
-          </View>
-          <View style={styles.pendingContent}>
-            <Text style={styles.pendingTitle}>Reportes por revisar</Text>
-            <Text style={styles.pendingDescription}>
-              3 reportes de usuarios pendientes
-            </Text>
-          </View>
-          <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
-        </TouchableOpacity>
-      </View>
-    </Card>
-  );
+        <View style={styles.pendingList}>
+          <TouchableOpacity 
+            style={styles.pendingItem}
+            onPress={() => router.push('/admin/affiliates')}
+          >
+            <View style={[styles.pendingIcon, { backgroundColor: '#FEF3C7' }]}>
+              <Ionicons name="person-add-outline" size={20} color="#F59E0B" />
+            </View>
+            <View style={styles.pendingContent}>
+              <Text style={styles.pendingTitle}>Afiliados por aprobar</Text>
+              <Text style={styles.pendingDescription}>
+                {stats.pendingAffiliates} solicitudes esperando revisión
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+          </TouchableOpacity>
+        </View>
+      </Card>
+    );
+  };
 
   if (loading) {
     return (

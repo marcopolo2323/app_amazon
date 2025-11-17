@@ -226,52 +226,110 @@ export default function HomeScreen() {
       <View style={styles.container}>
         {/* Header */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>¡Hola{firstName ? `, ${firstName}` : ""}!</Text>
-            <Text style={styles.subtitle}>¿Qué necesitas hoy?</Text>
+          <View style={styles.headerContent}>
+            <Text style={styles.greeting}>¡Hola{firstName ? `, ${firstName}` : ""}! 👋</Text>
+            <Text style={styles.subtitle}>¿Qué servicio necesitas hoy?</Text>
           </View>
-          <TouchableOpacity
-            style={styles.loginButton}
-            onPress={() => router.push("/login")}
-          >
-            <Ionicons name="log-in-outline" size={24} color="#2563EB" />
-          </TouchableOpacity>
+          {!user && (
+            <TouchableOpacity
+              style={styles.loginButton}
+              onPress={() => router.push("/login")}
+            >
+              <Ionicons name="log-in-outline" size={24} color="#2563EB" />
+            </TouchableOpacity>
+          )}
         </View>
+
+        {/* Search Bar */}
+        <TouchableOpacity
+          style={styles.searchBar}
+          onPress={() => router.push("/filter")}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="search-outline" size={20} color="#9CA3AF" />
+          <Text style={styles.searchPlaceholder}>Buscar servicios...</Text>
+          <Ionicons name="options-outline" size={20} color="#9CA3AF" />
+        </TouchableOpacity>
 
         {/* Hero Banner */}
         {renderHeroSlide()}
 
         {/* Categories Section */}
         <View style={styles.categoriesSection}>
-          <Text style={styles.sectionTitle}>Explora categorías</Text>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Categorías Populares</Text>
+            <TouchableOpacity onPress={() => router.push("/categories")}>
+              <Text style={styles.seeAllText}>Ver todas</Text>
+            </TouchableOpacity>
+          </View>
           <View style={styles.categoriesGrid}>
-            {categories.map(renderCategoryItem)}
+            {categories.slice(0, 6).map(renderCategoryItem)}
           </View>
         </View>
+
+        {/* CTA Banner for Affiliates */}
+        {user && user.role === 'client' && (
+          <Card style={styles.ctaBanner}>
+            <View style={styles.ctaContent}>
+              <View style={styles.ctaIcon}>
+                <Ionicons name="briefcase-outline" size={32} color="#10B981" />
+              </View>
+              <View style={styles.ctaText}>
+                <Text style={styles.ctaTitle}>¿Eres profesional?</Text>
+                <Text style={styles.ctaDescription}>
+                  Ofrece tus servicios y gana dinero extra
+                </Text>
+              </View>
+            </View>
+            <TouchableOpacity
+              style={styles.ctaButton}
+              onPress={() => router.push("/become-affiliate")}
+            >
+              <Text style={styles.ctaButtonText}>Ser Afiliado</Text>
+              <Ionicons name="arrow-forward" size={16} color="#ffffff" />
+            </TouchableOpacity>
+          </Card>
+        )}
 
         {/* Quick Actions */}
-        <View style={styles.quickActions}>
-          <Text style={styles.sectionTitle}>Acceso rápido</Text>
-          <View style={styles.quickActionsList}>
-            <TouchableOpacity
-              style={styles.quickActionItem}
-              onPress={() => router.push("/filter")}
-            >
-              <Ionicons name="grid-outline" size={20} color="#2563EB" />
-              <Text style={styles.quickActionText}>Explorar servicios</Text>
-              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-            </TouchableOpacity>
+        {!user && (
+          <View style={styles.quickActions}>
+            <Text style={styles.sectionTitle}>Comienza ahora</Text>
+            <View style={styles.quickActionsList}>
+              <TouchableOpacity
+                style={styles.quickActionItem}
+                onPress={() => router.push("/filter")}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#EFF6FF' }]}>
+                  <Ionicons name="grid-outline" size={20} color="#2563EB" />
+                </View>
+                <View style={styles.quickActionContent}>
+                  <Text style={styles.quickActionTitle}>Explorar servicios</Text>
+                  <Text style={styles.quickActionSubtitle}>
+                    Encuentra lo que necesitas
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              style={styles.quickActionItem}
-              onPress={() => router.push("/register")}
-            >
-              <Ionicons name="person-add-outline" size={20} color="#2563EB" />
-              <Text style={styles.quickActionText}>Crear cuenta</Text>
-              <Ionicons name="chevron-forward" size={16} color="#9CA3AF" />
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.quickActionItem}
+                onPress={() => router.push("/register")}
+              >
+                <View style={[styles.quickActionIcon, { backgroundColor: '#F0FDF4' }]}>
+                  <Ionicons name="person-add-outline" size={20} color="#10B981" />
+                </View>
+                <View style={styles.quickActionContent}>
+                  <Text style={styles.quickActionTitle}>Crear cuenta</Text>
+                  <Text style={styles.quickActionSubtitle}>
+                    Únete a nuestra comunidad
+                  </Text>
+                </View>
+                <Ionicons name="chevron-forward" size={20} color="#9CA3AF" />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
+        )}
       </View>
     </Screen>
   );
@@ -284,23 +342,45 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 24,
+    alignItems: "flex-start",
+    marginBottom: 20,
+  },
+  headerContent: {
+    flex: 1,
   },
   greeting: {
     fontSize: 28,
     fontWeight: "bold",
     color: "#111827",
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 16,
     color: "#6B7280",
-    marginTop: 4,
   },
   loginButton: {
-    padding: 8,
-    borderRadius: 8,
+    padding: 12,
+    borderRadius: 12,
     backgroundColor: "#EFF6FF",
+  },
+  
+  // Search Bar
+  searchBar: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F9FAFB",
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: "#E5E7EB",
+    gap: 12,
+  },
+  searchPlaceholder: {
+    flex: 1,
+    fontSize: 16,
+    color: "#9CA3AF",
   },
 
   // Hero Section
@@ -395,11 +475,21 @@ const styles = StyleSheet.create({
   categoriesSection: {
     marginBottom: 32,
   },
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 20,
     fontWeight: "bold",
     color: "#111827",
-    marginBottom: 16,
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: "#2563EB",
+    fontWeight: "600",
   },
   categoriesGrid: {
     flexDirection: "row",
@@ -431,6 +521,57 @@ const styles = StyleSheet.create({
     fontWeight: "500",
   },
 
+  // CTA Banner
+  ctaBanner: {
+    marginBottom: 32,
+    padding: 20,
+    backgroundColor: "#F0FDF4",
+    borderWidth: 1,
+    borderColor: "#D1FAE5",
+  },
+  ctaContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  ctaIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: "#ffffff",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 16,
+  },
+  ctaText: {
+    flex: 1,
+  },
+  ctaTitle: {
+    fontSize: 18,
+    fontWeight: "bold",
+    color: "#111827",
+    marginBottom: 4,
+  },
+  ctaDescription: {
+    fontSize: 14,
+    color: "#6B7280",
+  },
+  ctaButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#10B981",
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    gap: 8,
+  },
+  ctaButtonText: {
+    color: "#ffffff",
+    fontSize: 16,
+    fontWeight: "600",
+  },
+
   // Quick Actions
   quickActions: {
     marginBottom: 32,
@@ -447,11 +588,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  quickActionText: {
+  quickActionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  quickActionContent: {
     flex: 1,
+  },
+  quickActionTitle: {
     fontSize: 16,
-    color: "#374151",
-    fontWeight: "500",
-    marginLeft: 12,
+    color: "#111827",
+    fontWeight: "600",
+    marginBottom: 2,
+  },
+  quickActionSubtitle: {
+    fontSize: 13,
+    color: "#6B7280",
   },
 });

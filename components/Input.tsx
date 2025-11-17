@@ -15,8 +15,8 @@ interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
   helperText?: string;
-  leftIcon?: keyof typeof Ionicons.glyphMap;
-  rightIcon?: keyof typeof Ionicons.glyphMap;
+  leftIcon?: keyof typeof Ionicons.glyphMap | React.ReactNode;
+  rightIcon?: keyof typeof Ionicons.glyphMap | React.ReactNode;
   onRightIconPress?: () => void;
   containerStyle?: ViewStyle;
   inputStyle?: TextStyle;
@@ -80,12 +80,17 @@ const Input: React.FC<InputProps> = ({
         ]}
       >
         {leftIcon && (
-          <Ionicons
-            name={leftIcon}
-            size={20}
-            color={error ? '#EF4444' : isFocused ? '#2563EB' : '#9CA3AF'}
-            style={styles.leftIcon}
-          />
+          <View style={styles.leftIcon}>
+            {typeof leftIcon === 'string' ? (
+              <Ionicons
+                name={leftIcon as keyof typeof Ionicons.glyphMap}
+                size={20}
+                color={error ? '#EF4444' : isFocused ? '#2563EB' : '#9CA3AF'}
+              />
+            ) : (
+              leftIcon
+            )}
+          </View>
         )}
 
         <TextInput
@@ -113,11 +118,15 @@ const Input: React.FC<InputProps> = ({
             style={styles.rightIcon}
             disabled={!handleRightIconPress}
           >
-            <Ionicons
-              name={finalRightIcon || 'chevron-forward-outline'}
-              size={20}
-              color={error ? '#EF4444' : isFocused ? '#2563EB' : '#9CA3AF'}
-            />
+            {typeof finalRightIcon === 'string' ? (
+              <Ionicons
+                name={finalRightIcon as keyof typeof Ionicons.glyphMap || 'chevron-forward-outline'}
+                size={20}
+                color={error ? '#EF4444' : isFocused ? '#2563EB' : '#9CA3AF'}
+              />
+            ) : (
+              finalRightIcon
+            )}
           </TouchableOpacity>
         )}
       </View>

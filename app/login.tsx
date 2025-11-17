@@ -33,11 +33,20 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const redirectUri = makeRedirectUri({
+    scheme: 'com.lloyd_forger1.amazon_group_app',
+    path: 'redirect'
+  });
+
+  console.log('=== GOOGLE REDIRECT URI ===');
+  console.log('Redirect URI:', redirectUri);
+
   const [request, response, promptAsync] = Google.useAuthRequest({
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID,
     iosClientId: process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID,
     webClientId: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID,
     expoClientId: process.env.EXPO_PUBLIC_GOOGLE_EXPO_CLIENT_ID,
+    redirectUri: redirectUri,
   });
 
   React.useEffect(() => {
@@ -177,7 +186,7 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               keyboardType="email-address"
               autoCapitalize="none"
-              leftIcon={<Ionicons name="mail-outline" size={20} color="#666" />}
+              leftIcon="mail-outline"
             />
 
             <Input
@@ -186,16 +195,8 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
-              leftIcon={<Ionicons name="lock-closed-outline" size={20} color="#666" />}
-              rightIcon={
-                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-                  <Ionicons
-                    name={showPassword ? "eye-off-outline" : "eye-outline"}
-                    size={20}
-                    color="#666"
-                  />
-                </TouchableOpacity>
-              }
+              leftIcon="lock-closed-outline"
+              showPasswordToggle
             />
 
             <TouchableOpacity
@@ -223,7 +224,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               style={styles.googleButton}
-              onPress={() => {
+              onPress={async () => {
                 console.log('=== GOOGLE BUTTON PRESSED ===');
                 console.log('Request available:', request ? 'Yes' : 'No');
                 console.log('Loading:', loading);
@@ -233,7 +234,15 @@ export default function LoginScreen() {
                   return;
                 }
                 console.log('Calling promptAsync...');
-                promptAsync();
+                try {
+                  const result = await promptAsync();
+                  console.log('=== PROMPT ASYNC RESULT ===');
+                  console.log('Result:', JSON.stringify(result, null, 2));
+                } catch (error) {
+                  console.error('=== PROMPT ASYNC ERROR ===');
+                  console.error('Error:', error);
+                  Alert.alert('Error', 'No se pudo abrir Google Sign In');
+                }
               }}
               disabled={!request || loading}
             >

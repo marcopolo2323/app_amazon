@@ -1,14 +1,14 @@
 export default {
   expo: {
-    name: "amazon_group_app",
+    name: "amazon group",
     slug: "amazon_group_app",
     scheme: "amazongroupapp",
     version: "1.0.0",
     orientation: "portrait",
-    icon: "./assets/images/icon.png",
+    icon: "./assets/images/logo.jpg",
     userInterfaceStyle: "light",
     splash: {
-      image: "./assets/images/splash-icon.png",
+      image: "./assets/images/logo.jpg",
       resizeMode: "contain",
       backgroundColor: "#ffffff"
     },
@@ -44,13 +44,13 @@ export default {
         }
       ]
     ],
-    owner: "lloyd_forger1",
+    owner: "lloyd_forger2",
     extra: {
       router: {
         origin: false
       },
       eas: {
-        projectId: "5b65745f-ac07-4d99-8626-01682847f092"
+        projectId: "257c12b2-223c-4d54-bcd9-ab3cabaada8e"
       },
       EXPO_PUBLIC_API_URL: process.env.EXPO_PUBLIC_API_URL || "https://amazon-group-app.onrender.com/api"
     }

@@ -13,9 +13,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import Card from '../../components/Card';
+import DocumentViewer from '../../components/DocumentViewer';
 import { useAuthStore } from '../../stores/auth';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../lib/config';
 
 interface Affiliate {
   id: string;
@@ -29,6 +29,7 @@ interface Affiliate {
   yapePhone?: string;
   documentsComplete: boolean;
   verificationNotes?: string;
+  dniDocument?: string;
   createdAt: string;
 }
 
@@ -39,6 +40,7 @@ export default function AdminAffiliatesScreen() {
   const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'rejected'>('all');
   const [selectedAffiliate, setSelectedAffiliate] = useState<Affiliate | null>(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [showDocuments, setShowDocuments] = useState(false);
   const [notes, setNotes] = useState('');
   const [processing, setProcessing] = useState(false);
 
@@ -50,22 +52,30 @@ export default function AdminAffiliatesScreen() {
     setLoading(true);
     try {
       const url = filter === 'all' 
-        ? `${API_URL}/api/admin/affiliates`
-        : `${API_URL}/api/admin/affiliates?status=${filter}`;
+        ? `${API_URL}/admin/affiliates`
+        : `${API_URL}/admin/affiliates?status=${filter}`;
       
+      console.log('Loading affiliates from:', url);
       const response = await fetch(url, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      if (!response.ok) throw new Error('Error al cargar afiliados');
+      console.log('Affiliates response status:', response.status);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Affiliates error data:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Error al cargar afiliados');
+      }
 
       const data = await response.json();
-      setAffiliates(data.affiliates);
+      console.log('Affiliates data:', data);
+      setAffiliates(data.affiliates || []);
     } catch (error) {
       console.error('Error loading affiliates:', error);
-      Alert.alert('Error', 'No se pudieron cargar los afiliados');
+      Alert.alert('Error', error instanceof Error ? error.message : 'No se pudieron cargar los afiliados');
     } finally {
       setLoading(false);
     }
@@ -83,7 +93,7 @@ export default function AdminAffiliatesScreen() {
     setProcessing(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/admin/affiliates/${selectedAffiliate.id}/status`,
+        `${API_URL}/admin/affiliates/${selectedAffiliate.id}/status`,
         {
           method: 'PATCH',
           headers: {
@@ -111,37 +121,60 @@ export default function AdminAffiliatesScreen() {
   };
 
   const renderAffiliate = ({ item }: { item: Affiliate }) => (
-    <TouchableOpacity onPress={() => handleAffiliatePress(item)}>
-      <Card style={styles.affiliateCard}>
-        <View style={styles.affiliateHeader}>
-          <View style={styles.affiliateAvatar}>
-            <Ionicons name="briefcase" size={24} color="#6B7280" />
-          </View>
-          <View style={styles.affiliateInfo}>
-            <Text style={styles.affiliateName}>{item.name}</Text>
-            <Text style={styles.affiliateEmail}>{item.email}</Text>
-            <Text style={styles.affiliateDni}>DNI: {item.dni}</Text>
-          </View>
-          <View style={[styles.statusBadge, getStatusBadgeStyle(item.status)]}>
-            <Text style={styles.statusText}>{getStatusLabel(item.status)}</Text>
-          </View>
+    <Card style={styles.affiliateCard}>
+      <View style={styles.affiliateHeader}>
+        <View style={styles.affiliateAvatar}>
+          <Ionicons name="briefcase" size={24} color="#6B7280" />
         </View>
-        {item.bankAccount && (
-          <View style={styles.bankInfo}>
-            <Ionicons name="card-outline" size={16} color="#6B7280" />
-            <Text style={styles.bankText}>
-              {item.bankAccount.bank} - {item.bankAccount.number}
-            </Text>
-          </View>
+        <View style={styles.affiliateInfo}>
+          <Text style={styles.affiliateName}>{item.name}</Text>
+          <Text style={styles.affiliateEmail}>{item.email}</Text>
+          <Text style={styles.affiliateDni}>DNI: {item.dni}</Text>
+        </View>
+        <View style={[styles.statusBadge, getStatusBadgeStyle(item.status)]}>
+          <Text style={styles.statusText}>{getStatusLabel(item.status)}</Text>
+        </View>
+      </View>
+      
+      {item.bankAccount && (
+        <View style={styles.bankInfo}>
+          <Ionicons name="card-outline" size={16} color="#6B7280" />
+          <Text style={styles.bankText}>
+            {item.bankAccount.bank} - {item.bankAccount.number}
+          </Text>
+        </View>
+      )}
+      {item.yapePhone && (
+        <View style={styles.bankInfo}>
+          <Ionicons name="phone-portrait-outline" size={16} color="#6B7280" />
+          <Text style={styles.bankText}>Yape: {item.yapePhone}</Text>
+        </View>
+      )}
+
+      {/* Botones de acción */}
+      <View style={styles.actionButtons}>
+        <TouchableOpacity
+          style={styles.actionButton}
+          onPress={() => {
+            setSelectedAffiliate(item);
+            setShowDocuments(true);
+          }}
+        >
+          <Ionicons name="document-text-outline" size={18} color="#2563EB" />
+          <Text style={styles.actionButtonText}>Ver Documentos</Text>
+        </TouchableOpacity>
+        
+        {item.status === 'pending' && (
+          <TouchableOpacity
+            style={[styles.actionButton, styles.reviewButton]}
+            onPress={() => handleAffiliatePress(item)}
+          >
+            <Ionicons name="checkmark-circle-outline" size={18} color="#10B981" />
+            <Text style={[styles.actionButtonText, { color: '#10B981' }]}>Revisar</Text>
+          </TouchableOpacity>
         )}
-        {item.yapePhone && (
-          <View style={styles.bankInfo}>
-            <Ionicons name="phone-portrait-outline" size={16} color="#6B7280" />
-            <Text style={styles.bankText}>Yape: {item.yapePhone}</Text>
-          </View>
-        )}
-      </Card>
-    </TouchableOpacity>
+      </View>
+    </Card>
   );
 
   const getStatusLabel = (status: string) => {
@@ -173,7 +206,7 @@ export default function AdminAffiliatesScreen() {
   }
 
   return (
-    <Screen title="Afiliados" safeArea>
+    <Screen title="Afiliados" safeArea scrollable={false}>
       <View style={styles.filterContainer}>
         {(['all', 'pending', 'approved', 'rejected'] as const).map((f) => (
           <TouchableOpacity
@@ -274,6 +307,23 @@ export default function AdminAffiliatesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Document Viewer */}
+      {selectedAffiliate && (
+        <DocumentViewer
+          visible={showDocuments}
+          documents={[
+            {
+              type: 'DNI',
+              url: selectedAffiliate.dniDocument || 'https://via.placeholder.com/400x300?text=DNI+No+Disponible',
+              label: 'Documento de Identidad (DNI)',
+            },
+            // Puedes agregar más documentos aquí cuando estén disponibles
+          ]}
+          affiliateName={selectedAffiliate.name}
+          onClose={() => setShowDocuments(false)}
+        />
+      )}
     </Screen>
   );
 }
@@ -366,6 +416,30 @@ const styles = StyleSheet.create({
   bankText: {
     fontSize: 14,
     color: '#6B7280',
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 8,
+    gap: 6,
+  },
+  reviewButton: {
+    backgroundColor: '#F0FDF4',
+  },
+  actionButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#2563EB',
   },
   modalOverlay: {
     flex: 1,

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "amazon_group_app",
+    "name": "amazon group",
     "slug": "amazon_group_app",
     "scheme": "amazongroupapp",
     "version": "1.0.0",
@@ -44,7 +44,7 @@
         }
       ]
     ],
-    "owner": "lloyd_forger1",
+    "owner": "lloyd_forger2",
     "extra": {
       "router": {
         "origin": false

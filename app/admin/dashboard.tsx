@@ -14,9 +14,9 @@ import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import Card from '../../components/Card';
 import { useAuthStore } from '../../stores/auth';
+import { API_URL } from '../../lib/config';
 
 const { width } = Dimensions.get('window');
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
 
 interface AdminStats {
   totalUsers: number;
@@ -86,21 +86,43 @@ export default function AdminDashboardScreen() {
   const loadDashboardData = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/admin/stats`, {
+      console.log('=== ADMIN DASHBOARD DEBUG ===');
+      console.log('API URL:', API_URL);
+      console.log('Token:', token ? 'Present' : 'Missing');
+      console.log('Full endpoint:', `${API_URL}/admin/stats`);
+      
+      const response = await fetch(`${API_URL}/admin/stats`, {
         headers: {
           'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
         },
       });
 
+      console.log('Response status:', response.status);
+      console.log('Response ok:', response.ok);
+
       if (!response.ok) {
-        throw new Error('Error al cargar estadísticas');
+        const errorData = await response.json().catch(() => ({}));
+        console.log('Error data:', errorData);
+        throw new Error(errorData.message || `HTTP ${response.status}`);
       }
 
       const data = await response.json();
+      console.log('Stats data:', data);
       setStats(data);
-    } catch (error) {
-      console.error('Error loading admin dashboard data:', error);
-      Alert.alert('Error', 'No se pudieron cargar las estadísticas del dashboard');
+    } catch (error: any) {
+      console.error('=== ADMIN DASHBOARD ERROR ===');
+      console.error('Error:', error);
+      console.error('Error message:', error.message);
+      
+      Alert.alert(
+        'Error de Conexión',
+        `No se pudieron cargar las estadísticas:\n\n${error.message}\n\nURL: ${API_URL}/admin/stats\n\nAsegúrate de que el backend esté corriendo y el seeder haya sido ejecutado.`,
+        [
+          { text: 'Reintentar', onPress: loadDashboardData },
+          { text: 'Cancelar', style: 'cancel' },
+        ]
+      );
     } finally {
       setLoading(false);
     }
@@ -108,6 +130,24 @@ export default function AdminDashboardScreen() {
 
   const handleQuickAction = (route: string) => {
     router.push(route as any);
+  };
+
+  const handleLogout = () => {
+    Alert.alert(
+      'Cerrar Sesión',
+      '¿Estás seguro que deseas cerrar sesión?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Cerrar Sesión',
+          style: 'destructive',
+          onPress: () => {
+            useAuthStore.getState().logout();
+            router.replace('/login');
+          },
+        },
+      ]
+    );
   };
 
   const renderWelcomeSection = () => (
@@ -121,9 +161,18 @@ export default function AdminDashboardScreen() {
             Bienvenido, {user?.name}. Aquí está el resumen general del sistema.
           </Text>
         </View>
-        <View style={styles.adminBadge}>
-          <Ionicons name="shield-checkmark" size={24} color="#EF4444" />
-          <Text style={styles.adminText}>ADMIN</Text>
+        <View style={styles.welcomeActions}>
+          <View style={styles.adminBadge}>
+            <Ionicons name="shield-checkmark" size={24} color="#EF4444" />
+            <Text style={styles.adminText}>ADMIN</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.logoutButton}
+            onPress={handleLogout}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="log-out-outline" size={20} color="#EF4444" />
+          </TouchableOpacity>
         </View>
       </View>
     </Card>
@@ -206,29 +255,90 @@ export default function AdminDashboardScreen() {
     );
   };
 
-  const renderQuickActions = () => (
-    <View style={styles.quickActionsSection}>
-      <Text style={styles.sectionTitle}>Acciones Rápidas</Text>
-      <View style={styles.quickActionsGrid}>
-        {quickActions.map((action) => (
-          <TouchableOpacity
-            key={action.id}
-            style={styles.quickActionItem}
-            onPress={() => handleQuickAction(action.route)}
-            activeOpacity={0.7}
-          >
-            <Card style={styles.quickActionCard}>
-              <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}15` }]}>
-                <Ionicons name={action.icon} size={28} color={action.color} />
-              </View>
-              <Text style={styles.quickActionTitle}>{action.title}</Text>
-              <Text style={styles.quickActionDescription}>{action.description}</Text>
-            </Card>
-          </TouchableOpacity>
-        ))}
+  const renderQuickActions = () => {
+    const actions = [
+      {
+        id: 'users',
+        title: 'Usuarios',
+        description: 'Ver todos los usuarios',
+        icon: 'people-outline' as const,
+        color: '#3B82F6',
+        route: '/admin/users',
+      },
+      {
+        id: 'affiliates',
+        title: 'Afiliados',
+        description: 'Gestionar afiliados',
+        icon: 'briefcase-outline' as const,
+        color: '#10B981',
+        route: '/admin/affiliates',
+      },
+      {
+        id: 'services',
+        title: 'Servicios',
+        description: 'Ver servicios publicados',
+        icon: 'construct-outline' as const,
+        color: '#F59E0B',
+        route: '/admin/services',
+      },
+      {
+        id: 'orders',
+        title: 'Órdenes',
+        description: 'Gestionar pedidos',
+        icon: 'receipt-outline' as const,
+        color: '#8B5CF6',
+        route: '/admin/orders',
+      },
+      {
+        id: 'transactions',
+        title: 'Transacciones',
+        description: 'Ver transacciones',
+        icon: 'swap-horizontal-outline' as const,
+        color: '#06B6D4',
+        route: '/admin/transactions',
+      },
+      {
+        id: 'payments',
+        title: 'Pagos',
+        description: 'Pagos a afiliados',
+        icon: 'wallet-outline' as const,
+        color: '#EC4899',
+        route: '/admin/payments',
+      },
+      {
+        id: 'reports',
+        title: 'Reportes',
+        description: 'Historial mensual',
+        icon: 'bar-chart-outline' as const,
+        color: '#EF4444',
+        route: '/admin/reports',
+      },
+    ];
+
+    return (
+      <View style={styles.quickActionsSection}>
+        <Text style={styles.sectionTitle}>Gestión</Text>
+        <View style={styles.quickActionsGrid}>
+          {actions.map((action) => (
+            <TouchableOpacity
+              key={action.id}
+              style={styles.quickActionItem}
+              onPress={() => router.push(action.route as any)}
+              activeOpacity={0.7}
+            >
+              <Card style={styles.quickActionCard}>
+                <View style={[styles.quickActionIcon, { backgroundColor: `${action.color}15` }]}>
+                  <Ionicons name={action.icon} size={28} color={action.color} />
+                </View>
+                <Text style={styles.quickActionTitle}>{action.title}</Text>
+                <Text style={styles.quickActionDescription}>{action.description}</Text>
+              </Card>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
-    </View>
-  );
+    );
+  };
 
   const renderPendingActions = () => {
     if (!stats) return null;
@@ -314,6 +424,10 @@ const styles = StyleSheet.create({
     color: '#D1D5DB',
     lineHeight: 22,
   },
+  welcomeActions: {
+    alignItems: 'flex-end',
+    gap: 8,
+  },
   adminBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -329,6 +443,16 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: '#EF4444',
     marginLeft: 8,
+  },
+  logoutButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EF4444',
   },
   statsContainer: {
     marginBottom: 24,

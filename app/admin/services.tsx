@@ -13,8 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import Card from '../../components/Card';
 import { useAuthStore } from '../../stores/auth';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../lib/config';
 
 interface Service {
   id: string;
@@ -42,55 +41,71 @@ export default function AdminServicesScreen() {
   const loadServices = async () => {
     setLoading(true);
     try {
-      const response = await fetch(
-        `${API_URL}/api/admin/services?page=${page}&limit=20`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      );
+      const url = `${API_URL}/admin/services?page=${page}&limit=20`;
+      console.log('Loading services from:', url);
+      
+      const response = await fetch(url, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
 
-      if (!response.ok) throw new Error('Error al cargar servicios');
+      console.log('Services response status:', response.status);
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Services error data:', errorData);
+        throw new Error(errorData.error || errorData.message || 'Error al cargar servicios');
+      }
 
       const data = await response.json();
-      setServices(data.services);
-      setTotalPages(data.pagination.pages);
+      console.log('Services data:', data);
+      setServices(data.services || []);
+      setTotalPages(data.pagination?.pages || 1);
     } catch (error) {
       console.error('Error loading services:', error);
-      Alert.alert('Error', 'No se pudieron cargar los servicios');
+      Alert.alert('Error', error instanceof Error ? error.message : 'No se pudieron cargar los servicios');
     } finally {
       setLoading(false);
     }
   };
 
-  const renderService = ({ item }: { item: Service }) => (
-    <Card style={styles.serviceCard}>
-      <View style={styles.serviceHeader}>
-        {item.images && item.images.length > 0 ? (
-          <Image
-            source={{ uri: `${API_URL}${item.images[0]}` }}
-            style={styles.serviceImage}
-          />
-        ) : (
-          <View style={styles.servicePlaceholder}>
-            <Ionicons name="image-outline" size={32} color="#9CA3AF" />
+  const renderService = ({ item }: { item: Service }) => {
+    // Check if image is a full URL or relative path
+    const imageUrl = item.images && item.images.length > 0
+      ? item.images[0].startsWith('http') 
+        ? item.images[0] 
+        : `${API_URL}${item.images[0]}`
+      : null;
+
+    return (
+      <Card style={styles.serviceCard}>
+        <View style={styles.serviceHeader}>
+          {imageUrl ? (
+            <Image
+              source={{ uri: imageUrl }}
+              style={styles.serviceImage}
+            />
+          ) : (
+            <View style={styles.servicePlaceholder}>
+              <Ionicons name="image-outline" size={32} color="#9CA3AF" />
+            </View>
+          )}
+          <View style={styles.serviceInfo}>
+            <Text style={styles.serviceTitle} numberOfLines={2}>
+              {item.title}
+            </Text>
+            <Text style={styles.serviceAffiliate}>{item.affiliateName}</Text>
+            <Text style={styles.serviceCategory}>{item.categoryName}</Text>
+            <Text style={styles.servicePrice}>S/ {item.price.toFixed(2)}</Text>
           </View>
-        )}
-        <View style={styles.serviceInfo}>
-          <Text style={styles.serviceTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <Text style={styles.serviceAffiliate}>{item.affiliateName}</Text>
-          <Text style={styles.serviceCategory}>{item.categoryName}</Text>
-          <Text style={styles.servicePrice}>S/ {item.price.toFixed(2)}</Text>
+          <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
+            <Text style={styles.statusText}>{getStatusLabel(item.status)}</Text>
+          </View>
         </View>
-        <View style={[styles.statusBadge, getStatusStyle(item.status)]}>
-          <Text style={styles.statusText}>{getStatusLabel(item.status)}</Text>
-        </View>
-      </View>
-    </Card>
-  );
+      </Card>
+    );
+  };
 
   const getStatusLabel = (status: string) => {
     const labels: Record<string, string> = {
@@ -121,7 +136,7 @@ export default function AdminServicesScreen() {
   }
 
   return (
-    <Screen title="Servicios" safeArea>
+    <Screen title="Servicios" safeArea scrollable={false}>
       <FlatList
         data={services}
         renderItem={renderService}

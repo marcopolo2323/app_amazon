@@ -8,12 +8,12 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Screen from '../../components/Screen';
+import { useRouter } from 'expo-router';
 import Card from '../../components/Card';
 import { useAuthStore } from '../../stores/auth';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../lib/config';
 
 interface Order {
   id: string;
@@ -29,6 +29,7 @@ interface Order {
 }
 
 export default function AdminOrdersScreen() {
+  const router = useRouter();
   const { token } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -43,7 +44,7 @@ export default function AdminOrdersScreen() {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_URL}/api/admin/orders?page=${page}&limit=20`,
+        `${API_URL}/admin/orders?page=${page}&limit=20`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -51,14 +52,17 @@ export default function AdminOrdersScreen() {
         }
       );
 
-      if (!response.ok) throw new Error('Error al cargar órdenes');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al cargar órdenes');
+      }
 
       const data = await response.json();
-      setOrders(data.orders);
-      setTotalPages(data.pagination.pages);
+      setOrders(data.orders || []);
+      setTotalPages(data.pagination?.pages || 1);
     } catch (error) {
       console.error('Error loading orders:', error);
-      Alert.alert('Error', 'No se pudieron cargar las órdenes');
+      Alert.alert('Error', error instanceof Error ? error.message : 'No se pudieron cargar las órdenes');
     } finally {
       setLoading(false);
     }
@@ -180,16 +184,30 @@ export default function AdminOrdersScreen() {
 
   if (loading && orders.length === 0) {
     return (
-      <Screen title="Órdenes" safeArea>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Órdenes</Text>
+          <View style={{ width: 40 }} />
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2563EB" />
         </View>
-      </Screen>
+      </SafeAreaView>
     );
   }
 
   return (
-    <Screen title="Órdenes" safeArea>
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Órdenes</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <FlatList
         data={orders}
         renderItem={renderOrder}
@@ -197,40 +215,70 @@ export default function AdminOrdersScreen() {
         contentContainerStyle={styles.listContainer}
         refreshing={loading}
         onRefresh={loadOrders}
+        showsVerticalScrollIndicator={false}
+        ListFooterComponent={
+          totalPages > 1 ? (
+            <View style={styles.pagination}>
+              <TouchableOpacity
+                style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}
+                onPress={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page === 1}
+              >
+                <Ionicons name="chevron-back" size={20} color={page === 1 ? '#D1D5DB' : '#2563EB'} />
+              </TouchableOpacity>
+              <Text style={styles.pageText}>
+                Página {page} de {totalPages}
+              </Text>
+              <TouchableOpacity
+                style={[styles.pageButton, page === totalPages && styles.pageButtonDisabled]}
+                onPress={() => setPage(p => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+              >
+                <Ionicons name="chevron-forward" size={20} color={page === totalPages ? '#D1D5DB' : '#2563EB'} />
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
       />
-
-      {totalPages > 1 && (
-        <View style={styles.pagination}>
-          <TouchableOpacity
-            style={[styles.pageButton, page === 1 && styles.pageButtonDisabled]}
-            onPress={() => setPage(p => Math.max(1, p - 1))}
-            disabled={page === 1}
-          >
-            <Ionicons name="chevron-back" size={20} color={page === 1 ? '#D1D5DB' : '#2563EB'} />
-          </TouchableOpacity>
-          <Text style={styles.pageText}>
-            Página {page} de {totalPages}
-          </Text>
-          <TouchableOpacity
-            style={[styles.pageButton, page === totalPages && styles.pageButtonDisabled]}
-            onPress={() => setPage(p => Math.min(totalPages, p + 1))}
-            disabled={page === totalPages}
-          >
-            <Ionicons name="chevron-forward" size={20} color={page === totalPages ? '#D1D5DB' : '#2563EB'} />
-          </TouchableOpacity>
-        </View>
-      )}
-    </Screen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   listContainer: {
+    paddingHorizontal: 16,
     paddingBottom: 16,
   },
   orderCard: {

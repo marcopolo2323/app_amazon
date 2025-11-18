@@ -4,6 +4,7 @@
   },
   "build": {
     "preview": {
+      "node": "20.11.1",
       "android": {
         "buildType": "apk",
         "distribution": "internal"

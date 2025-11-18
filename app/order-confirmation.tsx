@@ -13,6 +13,7 @@ import { Ionicons } from "@expo/vector-icons";
 import Screen from "../components/Screen";
 import Card from "../components/Card";
 import Button from "../components/Button";
+import ReceiptViewer from "../components/ReceiptViewer";
 import { useOrdersStore } from "../stores/orders";
 import { useAuthStore } from "../stores/auth";
 import { Api } from "../lib/api";
@@ -48,6 +49,7 @@ export default function OrderConfirmationScreen() {
   const { getOrderById, updateOrder } = useOrdersStore();
   const { token } = useAuthStore();
   const [loading, setLoading] = useState(true);
+  const [showReceipt, setShowReceipt] = useState(false);
   const [orderDetails, setOrderDetails] = useState<OrderDetails | null>(null);
 
   const isPaymentSuccessful = success === "true";
@@ -382,6 +384,14 @@ export default function OrderConfirmationScreen() {
 
   const renderActionButtons = () => (
     <View style={styles.actionButtons}>
+      <TouchableOpacity
+        style={styles.receiptButton}
+        onPress={() => setShowReceipt(true)}
+      >
+        <Ionicons name="receipt-outline" size={20} color="#2563EB" />
+        <Text style={styles.receiptButtonText}>Ver Comprobante</Text>
+      </TouchableOpacity>
+
       <Button
         onPress={handleViewMyOrders}
         variant="outline"
@@ -423,6 +433,32 @@ export default function OrderConfirmationScreen() {
         </ScrollView>
 
         {renderActionButtons()}
+
+        {/* Receipt Viewer */}
+        {orderDetails && (
+          <ReceiptViewer
+            visible={showReceipt}
+            type="transaction"
+            receiptNumber={`ORD-${orderDetails.bookingId}`}
+            date={new Date().toLocaleDateString('es-PE', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+            })}
+            items={[
+              { label: 'Servicio', value: orderDetails.serviceName },
+              { label: 'Proveedor', value: orderDetails.providerName },
+              { label: 'Fecha', value: orderDetails.date },
+              { label: 'Hora', value: orderDetails.time },
+              { label: 'Dirección', value: orderDetails.address },
+              { label: 'Método de Pago', value: getPaymentMethodText(orderDetails.paymentMethod) },
+              { label: 'Monto Total', value: `S/ ${orderDetails.totalAmount.toFixed(2)}`, highlight: true },
+            ]}
+            total={orderDetails.totalAmount}
+            notes={`Estado: ${getStatusInfo().text}${orderDetails.transactionId ? ` | ID Transacción: ${orderDetails.transactionId}` : ''}`}
+            onClose={() => setShowReceipt(false)}
+          />
+        )}
       </View>
     </Screen>
   );
@@ -636,6 +672,22 @@ const styles = StyleSheet.create({
     paddingVertical: 20,
     paddingBottom: 32,
     gap: 12,
+  },
+  receiptButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    paddingHorizontal: 20,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 12,
+    gap: 8,
+    marginBottom: 8,
+  },
+  receiptButtonText: {
+    fontSize: 16,
+    fontWeight: "600",
+    color: "#2563EB",
   },
   actionButton: {
     width: "100%",

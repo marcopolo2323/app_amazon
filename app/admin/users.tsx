@@ -13,8 +13,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Screen from '../../components/Screen';
 import Card from '../../components/Card';
 import { useAuthStore } from '../../stores/auth';
-
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:5000';
+import { API_URL } from '../../lib/config';
 
 interface User {
   id: string;
@@ -40,23 +39,30 @@ export default function AdminUsersScreen() {
   const loadUsers = async () => {
     setLoading(true);
     try {
+      console.log('Loading users from:', `${API_URL}/admin/users`);
       const response = await fetch(
-        `${API_URL}/api/admin/users?page=${page}&limit=20&search=${search}`,
+        `${API_URL}/admin/users?page=${page}&limit=20&search=${search}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
           },
         }
       );
 
-      if (!response.ok) throw new Error('Error al cargar usuarios');
+      console.log('Users response status:', response.status);
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || `HTTP ${response.status}`);
+      }
 
       const data = await response.json();
+      console.log('Users loaded:', data.users?.length || 0);
       setUsers(data.users);
       setTotalPages(data.pagination.pages);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error loading users:', error);
-      Alert.alert('Error', 'No se pudieron cargar los usuarios');
+      Alert.alert('Error', `No se pudieron cargar los usuarios: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -109,7 +115,7 @@ export default function AdminUsersScreen() {
   }
 
   return (
-    <Screen title="Usuarios" safeArea>
+    <Screen title="Usuarios" safeArea scrollable={false}>
       <View style={styles.searchContainer}>
         <Ionicons name="search" size={20} color="#9CA3AF" style={styles.searchIcon} />
         <TextInput

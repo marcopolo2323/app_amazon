@@ -11,8 +11,9 @@ import {
   TextInput,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import Screen from '../../components/Screen';
+import { useRouter } from 'expo-router';
 import Card from '../../components/Card';
 import { useAuthStore } from '../../stores/auth';
 
@@ -29,6 +30,7 @@ interface PendingPayment {
 }
 
 export default function AdminPaymentsScreen() {
+  const router = useRouter();
   const { token } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
@@ -48,19 +50,22 @@ export default function AdminPaymentsScreen() {
   const loadPendingPayments = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/api/affiliate-payments/pending`, {
+      const response = await fetch(`${API_URL}/admin/pending-payments`, {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
       });
 
-      if (!response.ok) throw new Error('Error al cargar pagos pendientes');
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Error al cargar pagos pendientes');
+      }
 
       const data = await response.json();
-      setPendingPayments(data.pendingPayments);
+      setPendingPayments(data.pendingPayments || []);
     } catch (error) {
       console.error('Error loading pending payments:', error);
-      Alert.alert('Error', 'No se pudieron cargar los pagos pendientes');
+      Alert.alert('Error', error instanceof Error ? error.message : 'No se pudieron cargar los pagos pendientes');
     } finally {
       setLoading(false);
     }
@@ -107,7 +112,7 @@ export default function AdminPaymentsScreen() {
       };
 
       // Crear el pago
-      const createResponse = await fetch(`${API_URL}/api/affiliate-payments`, {
+      const createResponse = await fetch(`${API_URL}/affiliate-payments`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${token}`,
@@ -122,7 +127,7 @@ export default function AdminPaymentsScreen() {
 
       // Completar el pago inmediatamente
       const completeResponse = await fetch(
-        `${API_URL}/api/affiliate-payments/${payment.paymentId}/complete`,
+        `${API_URL}/affiliate-payments/${payment.paymentId}/complete`,
         {
           method: 'PATCH',
           headers: {
@@ -193,32 +198,47 @@ export default function AdminPaymentsScreen() {
 
   if (loading) {
     return (
-      <Screen title="Pagos Pendientes" safeArea>
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <Ionicons name="arrow-back" size={24} color="#111827" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Pagos Pendientes</Text>
+          <View style={{ width: 40 }} />
+        </View>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#2563EB" />
         </View>
-      </Screen>
+      </SafeAreaView>
     );
   }
 
   return (
-    <Screen title="Pagos Pendientes" safeArea>
-      {pendingPayments.length === 0 ? (
-        <View style={styles.emptyContainer}>
-          <Ionicons name="checkmark-circle-outline" size={64} color="#10B981" />
-          <Text style={styles.emptyTitle}>¡Todo al día!</Text>
-          <Text style={styles.emptyText}>No hay pagos pendientes a afiliados</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={pendingPayments}
-          renderItem={renderPayment}
-          keyExtractor={(item) => item._id}
-          contentContainerStyle={styles.listContainer}
-          refreshing={loading}
-          onRefresh={loadPendingPayments}
-        />
-      )}
+    <SafeAreaView style={styles.container} edges={['top']}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <Ionicons name="arrow-back" size={24} color="#111827" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Pagos Pendientes</Text>
+        <View style={{ width: 40 }} />
+      </View>
+      <FlatList
+        data={pendingPayments}
+        renderItem={renderPayment}
+        keyExtractor={(item) => item._id}
+        contentContainerStyle={styles.listContainer}
+        refreshing={loading}
+        onRefresh={loadPendingPayments}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="checkmark-circle-outline" size={64} color="#10B981" />
+              <Text style={styles.emptyTitle}>¡Todo al día!</Text>
+              <Text style={styles.emptyText}>No hay pagos pendientes a afiliados</Text>
+            </View>
+          ) : null
+        }
+      />
 
       <Modal
         visible={modalVisible}
@@ -344,21 +364,48 @@ export default function AdminPaymentsScreen() {
           </View>
         </View>
       </Modal>
-    </Screen>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#F9FAFB',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#111827',
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   emptyContainer: {
-    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     padding: 32,
+    minHeight: 300,
   },
   emptyTitle: {
     fontSize: 24,
@@ -373,6 +420,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   listContainer: {
+    paddingHorizontal: 16,
     paddingBottom: 16,
   },
   paymentCard: {
